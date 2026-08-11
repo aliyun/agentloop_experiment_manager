@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+LAUNCHER="$SCRIPT_DIR/agentloop-launcher"
+
+if [[ ! -x "$LAUNCHER" ]]; then
+  echo "AgentLoop launcher is missing or not executable: $LAUNCHER" >&2
+  exit 2
+fi
+
+# This helper deliberately uses data-dir/master.key. Ignore a stale or placeholder
+# value inherited from the caller's shell so no environment setup is required.
+unset AGENTLOOP_LAUNCHER_MASTER_KEY
+
+exec "$LAUNCHER" start \
+  --environment production \
+  --host 0.0.0.0 \
+  --allow-remote-access \
+  --use-local-master-key \
+  --no-open-browser \
+  "$@"

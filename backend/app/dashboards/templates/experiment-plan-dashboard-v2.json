@@ -1,0 +1,144 @@
+{
+  "templateVersion": "2",
+  "logstore": "evaluation_detail",
+  "timeRange": "-604800s",
+  "description": "Managed Experiment Plan dashboard. Every query is permanently scoped to one AgentLoop Experiment Plan.",
+  "filters": [
+    {
+      "id": "filter_run",
+      "alias": "实验运行",
+      "key": "data_link.experiment_id",
+      "sql": "SELECT json_extract_scalar(data_link, '$.experiment_id') AS value, count(*) AS n WHERE json_extract_scalar(data_link, '$.experiment_id') IS NOT NULL GROUP BY value ORDER BY n DESC LIMIT 500"
+    },
+    {
+      "id": "filter_experiment_version",
+      "alias": "实验版本",
+      "key": "data_link.experiment_version",
+      "sql": "SELECT json_extract_scalar(data_link, '$.experiment_version') AS value, count(*) AS n WHERE json_extract_scalar(data_link, '$.experiment_version') IS NOT NULL GROUP BY value ORDER BY n DESC LIMIT 500"
+    },
+    {
+      "id": "filter_item",
+      "alias": "题目 ID",
+      "key": "data_link.dataset_item_id",
+      "sql": "SELECT json_extract_scalar(data_link, '$.dataset_item_id') AS value, count(*) AS n WHERE json_extract_scalar(data_link, '$.dataset_item_id') IS NOT NULL GROUP BY value ORDER BY n DESC LIMIT 1000"
+    },
+    {
+      "id": "filter_evaluator",
+      "alias": "评估器",
+      "key": "evaluator_name",
+      "sql": "SELECT evaluator_name AS value, count(*) AS n WHERE evaluator_name IS NOT NULL GROUP BY value ORDER BY n DESC LIMIT 200"
+    },
+    {
+      "id": "filter_evaluator_version",
+      "alias": "评估器版本",
+      "key": "custom_outputs.evaluator_version",
+      "sql": "SELECT json_extract_scalar(custom_outputs, '$.evaluator_version') AS value, count(*) AS n WHERE json_extract_scalar(custom_outputs, '$.evaluator_version') IS NOT NULL GROUP BY value ORDER BY n DESC LIMIT 200"
+    },
+    {
+      "id": "filter_rubric_id",
+      "alias": "评分规则",
+      "key": "custom_outputs.rubric_id",
+      "sql": "SELECT json_extract_scalar(custom_outputs, '$.rubric_id') AS value, count(*) AS n WHERE json_extract_scalar(custom_outputs, '$.rubric_id') IS NOT NULL GROUP BY value ORDER BY n DESC LIMIT 200"
+    }
+  ],
+  "panels": [
+    {
+      "id": "kpi_comparable_score",
+      "title": "可比平均分",
+      "type": "statpro",
+      "position": [0, 2, 6, 4],
+      "sql": "SELECT round(avg(coalesce(normalized_score_value, score_value)) * 100, 2) AS comparable_avg_score FROM ranked WHERE row_num = 1 AND status = 'success' AND coalesce(normalized_score_value, score_value) IS NOT NULL"
+    },
+    {
+      "id": "kpi_score_availability",
+      "title": "评分可用率",
+      "type": "statpro",
+      "position": [6, 2, 6, 4],
+      "sql": "SELECT round(100.0 * sum(CASE WHEN status = 'success' AND coalesce(normalized_score_value, score_value) IS NOT NULL THEN 1 ELSE 0 END) / nullif(count(*), 0), 2) AS score_availability FROM ranked WHERE row_num = 1"
+    },
+    {
+      "id": "kpi_failure_rate",
+      "title": "评估失败率",
+      "type": "statpro",
+      "position": [12, 2, 6, 4],
+      "sql": "SELECT round(100.0 * sum(CASE WHEN status <> 'success' THEN 1 ELSE 0 END) / nullif(count(*), 0), 2) AS failure_rate FROM ranked WHERE row_num = 1"
+    },
+    {
+      "id": "kpi_sample_count",
+      "title": "有效样本数 N",
+      "type": "statpro",
+      "position": [18, 2, 6, 4],
+      "sql": "SELECT count(*) AS sample_count FROM ranked WHERE row_num = 1 AND status = 'success' AND coalesce(normalized_score_value, score_value) IS NOT NULL"
+    },
+    {
+      "id": "trend_score",
+      "title": "平均分趋势",
+      "type": "linepro",
+      "position": [0, 6, 16, 6],
+      "xAxisKey": "dt",
+      "yAxisKeys": ["avg_score"],
+      "sql": "SELECT ${time_bucket} AS dt, round(avg(coalesce(normalized_score_value, score_value)) * 100, 2) AS avg_score FROM ranked WHERE row_num = 1 AND status = 'success' AND coalesce(normalized_score_value, score_value) IS NOT NULL GROUP BY dt ORDER BY dt"
+    },
+    {
+      "id": "trend_sample_count",
+      "title": "样本数趋势",
+      "type": "linepro",
+      "position": [16, 6, 8, 6],
+      "xAxisKey": "dt",
+      "yAxisKeys": ["sample_count"],
+      "sql": "SELECT ${time_bucket} AS dt, count(*) AS sample_count FROM ranked WHERE row_num = 1 GROUP BY dt ORDER BY dt"
+    },
+    {
+      "id": "trend_score_by_item",
+      "title": "逐题分数趋势（每题一条线）",
+      "type": "aggpro",
+      "position": [0, 12, 14, 8],
+      "xAxisKey": "dt",
+      "yAxisKey": "avg_score",
+      "aggField": "item_series",
+      "maxClassifyGroupNum": 50,
+      "sql": ", scored_by_item AS (SELECT experiment_run_id, dataset_item_id, coalesce(normalized_score_value, score_value) AS score, min(event_time_ms) OVER (PARTITION BY experiment_run_id) AS event_time_ms FROM ranked WHERE row_num = 1 AND status = 'success' AND experiment_run_id IS NOT NULL AND dataset_item_id IS NOT NULL AND coalesce(normalized_score_value, score_value) IS NOT NULL) SELECT ${time_bucket} AS dt, dataset_item_id AS item_series, round(avg(score) * 100, 2) AS avg_score FROM scored_by_item GROUP BY dt, item_series ORDER BY dt, item_series LIMIT 2000"
+    },
+    {
+      "id": "avg_score_by_item",
+      "title": "各题平均分（低分优先，最多 30 题）",
+      "type": "barpro",
+      "position": [14, 12, 10, 8],
+      "xAxisKey": "item_label",
+      "yAxisKeys": ["avg_score"],
+      "orientation": "horizontal",
+      "showLegend": false,
+      "sql": "SELECT CASE WHEN length(dataset_item_id) > 22 THEN concat(substr(dataset_item_id, 1, 10), '…', substr(dataset_item_id, length(dataset_item_id) - 7, 8)) ELSE dataset_item_id END AS item_label, round(avg(coalesce(normalized_score_value, score_value)) * 100, 2) AS avg_score FROM ranked WHERE row_num = 1 AND status = 'success' AND dataset_item_id IS NOT NULL AND coalesce(normalized_score_value, score_value) IS NOT NULL GROUP BY dataset_item_id ORDER BY avg_score ASC, dataset_item_id ASC LIMIT 30"
+    },
+    {
+      "id": "run_comparison",
+      "title": "不同 Run / 版本对比",
+      "type": "tablepro",
+      "position": [0, 20, 16, 7],
+      "sql": "SELECT experiment_run_id, experiment_version, evaluator_name, coalesce(evaluator_version, 'legacy') AS evaluator_version, coalesce(rubric_id, 'unknown') AS rubric_id, round(avg(CASE WHEN status = 'success' THEN coalesce(normalized_score_value, score_value) END) * 100, 2) AS avg_score, count(*) AS total_n, sum(CASE WHEN status = 'success' AND coalesce(normalized_score_value, score_value) IS NOT NULL THEN 1 ELSE 0 END) AS scored_n, sum(CASE WHEN status <> 'success' THEN 1 ELSE 0 END) AS failed_n FROM ranked WHERE row_num = 1 GROUP BY experiment_run_id, experiment_version, evaluator_name, evaluator_version, rubric_id ORDER BY max(event_time_ms) DESC LIMIT 200"
+    },
+    {
+      "id": "issue_distribution",
+      "title": "主要问题分布",
+      "type": "barpro",
+      "position": [16, 20, 8, 7],
+      "xAxisKey": "category",
+      "yAxisKeys": ["value"],
+      "sql": "SELECT coalesce(primary_issue_category, 'unknown') AS category, count(*) AS value FROM ranked WHERE row_num = 1 GROUP BY category ORDER BY value DESC"
+    },
+    {
+      "id": "bad_cases",
+      "title": "低分与失败修复队列",
+      "type": "tablepro",
+      "position": [0, 27, 24, 8],
+      "sql": "SELECT from_unixtime(event_time_ms / 1000) AS event_time, experiment_run_id, experiment_version, dataset_item_id, evaluator_name, coalesce(evaluator_version, 'legacy') AS evaluator_version, rubric_id, round(coalesce(normalized_score_value, score_value) * 100, 2) AS score, status, primary_issue_category, missing_point_count, conceptual_error_count, score_cap_count, improvement_suggestion, explanation, trace_id, eval_id FROM ranked WHERE row_num = 1 AND (status <> 'success' OR coalesce(normalized_score_value, score_value, 0) < 0.85) ORDER BY CASE WHEN status <> 'success' THEN 0 ELSE 1 END, coalesce(normalized_score_value, score_value, -1), event_time_ms DESC LIMIT 500"
+    },
+    {
+      "id": "evaluation_details",
+      "title": "逐题评分明细",
+      "type": "tablepro",
+      "position": [0, 35, 24, 10],
+      "sql": "SELECT from_unixtime(event_time_ms / 1000) AS event_time, experiment_run_id, experiment_version, dataset_id, dataset_item_id, evaluator_name, coalesce(evaluator_version, 'legacy') AS evaluator_version, rubric_id, rubric_version, round(coalesce(normalized_score_value, score_value) * 100, 2) AS score, status, covered_point_count, missing_point_count, conceptual_error_count, score_cap_count, covered_points, missing_points, conceptual_errors, score_caps_applied, primary_issue_category, improvement_suggestion, explanation, trace_id, task_id, run_id, eval_id, custom_outputs_json FROM ranked WHERE row_num = 1 ORDER BY event_time_ms DESC LIMIT 1000"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+// This file is auto-generated, don't edit it. Thanks.
+package client
+
+import (
+	"github.com/alibabacloud-go/tea/dara"
+)
+
+type iSearchContextResponseBody interface {
+	dara.Model
+	String() string
+	GoString() string
+	SetRequestId(v string) *SearchContextResponseBody
+	GetRequestId() *string
+	SetResults(v []map[string]interface{}) *SearchContextResponseBody
+	GetResults() []map[string]interface{}
+}
+
+type SearchContextResponseBody struct {
+	// The request ID. You can use this ID to locate and troubleshoot issues.
+	//
+	// example:
+	//
+	// 9ACFB10A-1B2C-3D4E-5F6G-7H8I9J0K1L2M
+	RequestId *string `json:"requestId,omitempty" xml:"requestId,omitempty"`
+	// The list of retrieval results, sorted by similarity in descending order.
+	Results []map[string]interface{} `json:"results,omitempty" xml:"results,omitempty" type:"Repeated"`
+}
+
+func (s SearchContextResponseBody) String() string {
+	return dara.Prettify(s)
+}
+
+func (s SearchContextResponseBody) GoString() string {
+	return s.String()
+}
+
+func (s *SearchContextResponseBody) GetRequestId() *string {
+	return s.RequestId
+}
+
+func (s *SearchContextResponseBody) GetResults() []map[string]interface{} {
+	return s.Results
+}
+
+func (s *SearchContextResponseBody) SetRequestId(v string) *SearchContextResponseBody {
+	s.RequestId = &v
+	return s
+}
+
+func (s *SearchContextResponseBody) SetResults(v []map[string]interface{}) *SearchContextResponseBody {
+	s.Results = v
+	return s
+}
+
+func (s *SearchContextResponseBody) Validate() error {
+	return dara.Validate(s)
+}

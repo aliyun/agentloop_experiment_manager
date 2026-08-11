@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+
+class SecretStore(Protocol):
+    def put(self, reference: str, value: str) -> None: ...
+
+    def get(self, reference: str) -> str: ...
+
+    def delete(self, reference: str) -> None: ...
+
+    def exists(self, reference: str) -> bool: ...
