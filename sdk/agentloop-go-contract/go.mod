@@ -1,6 +1,6 @@
 module agentloop-local-experiment-launcher/sdk/agentloop-go-contract
 
-go 1.22
+go 1.25.0
 
 require github.com/alibabacloud-go/agentloop-20260520/v2 v2.3.1
 
@@ -17,7 +17,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
 
