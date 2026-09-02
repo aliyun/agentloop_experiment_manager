@@ -8,7 +8,7 @@ dependencies = [
   "agentloop-sdk==1.0.3",
   "alibabacloud-agentloop20260520==2.3.1",
   "aliyun-log-python-sdk==0.9.48",
-  "cryptography>=43.0,<46",
+  "cryptography>=43.0,<51",
   "fastapi>=0.115,<1",
   "platformdirs>=4.3,<5",
   "pydantic-settings>=2.6,<3",
